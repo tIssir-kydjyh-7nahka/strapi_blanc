@@ -1,0 +1,38 @@
+{
+  "kind": "collectionType",
+  "collectionName": "tests",
+  "info": {
+    "singularName": "test",
+    "pluralName": "tests",
+    "displayName": "Test"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "tasksCorrectCount": {
+      "type": "integer",
+      "default": 0
+    },
+    "session": {
+      "type": "text"
+    },
+    "time": {
+      "type": "time",
+      "default": "00:00"
+    },
+    "users_permissions_user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user",
+      "inversedBy": "tests"
+    },
+    "task_results": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::task-result.task-result",
+      "mappedBy": "test"
+    }
+  }
+}

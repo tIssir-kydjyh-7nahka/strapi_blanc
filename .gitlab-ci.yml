@@ -1,0 +1,87 @@
+image:
+  name: amazon/aws-cli
+  entrypoint: [""]
+services:
+  - name: docker:19.03.12-dind
+
+variables:
+  DOCKER_TLS_CERTDIR: "/certs"
+  ECR_HOST: "853898314540.dkr.ecr.us-east-1.amazonaws.com"
+  CI_APPLICATION_TAG: ${CI_PIPELINE_ID}
+
+  AWS_ACCOUNT_ID: 853898314540
+  AWS_DEFAULT_REGION: $AWS_DEFAULT_REGION
+  AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
+  AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
+
+  ALLOWED_DOMAINS: "gss.stemsc.com"
+  SITES: "gss.stemsc.com=localhost:3000"
+
+stages:
+  - build
+  - deploy
+
+.build_nginx: &build_nginx
+  before_script:
+    - amazon-linux-extras install docker
+  script:
+    - cd docker/nginx
+    - echo ALLOWED_DOMAINS=$ALLOWED_DOMAINS >> .env
+    - echo SITES=$SITES >> .env
+    - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_HOST
+    - echo Building the Docker image...
+    - docker pull $CI_APPLICATION_REPOSITORY:latest || true
+    - docker build --cache-from $CI_APPLICATION_REPOSITORY:latest -t $CI_APPLICATION_REPOSITORY:$CI_APPLICATION_TAG -t $CI_APPLICATION_REPOSITORY:latest .
+    - echo Pushing the Docker image...
+    - docker push $CI_APPLICATION_REPOSITORY:$CI_APPLICATION_TAG
+    - docker push $CI_APPLICATION_REPOSITORY:latest
+  tags:
+    - docker-dind
+
+.build_app: &build_app
+  before_script:
+    - amazon-linux-extras install docker
+  script:
+    - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_HOST
+    - echo Building the Docker image...
+    - docker pull $CI_APPLICATION_REPOSITORY:latest || true
+    - docker build --cache-from $CI_APPLICATION_REPOSITORY:latest -t $CI_APPLICATION_REPOSITORY:$CI_APPLICATION_TAG -t $CI_APPLICATION_REPOSITORY:latest .
+    - echo Pushing the Docker image...
+    - docker push $CI_APPLICATION_REPOSITORY:$CI_APPLICATION_TAG
+    - docker push $CI_APPLICATION_REPOSITORY:latest
+  tags:
+    - docker-dind
+
+
+build_nginx:
+  stage: build
+  variables:
+    CI_APPLICATION_REPOSITORY: $GSS_NGINX_CI_APPLICATION_REPOSITORY
+  <<: *build_nginx
+  when: manual
+
+build_app:
+  stage: build
+  variables:
+    CI_APPLICATION_REPOSITORY: $GSS_CI_APPLICATION_REPOSITORY
+  <<: *build_app
+  when: manual
+
+
+deploy_nginx:
+  stage: deploy
+  tags:
+    - docker-dind
+  variables:
+    CI_APPLICATION_REPOSITORY: $GSS_NGINX_CI_APPLICATION_REPOSITORY
+    CI_AWS_ECS_CLUSTER: "gss-cluster"
+    CI_AWS_ECS_SERVICE: "gss"
+    CI_AWS_ECS_TASK_DEFINITION: "gss"
+  before_script:
+    - amazon-linux-extras install docker
+    - yum install -y jq
+  script:
+    - chmod +x ./bin/ecs
+    - ./bin/ecs update-task-definition
+  when: manual
+

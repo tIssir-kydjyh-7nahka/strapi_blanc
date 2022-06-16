@@ -1,0 +1,36 @@
+{
+  "kind": "collectionType",
+  "collectionName": "task_results",
+  "info": {
+    "singularName": "task-result",
+    "pluralName": "task-results",
+    "displayName": "TaskResult",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "video": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::video.video",
+      "inversedBy": "task_result"
+    },
+    "correct": {
+      "type": "boolean",
+      "default": false
+    },
+    "time": {
+      "type": "time",
+      "default": "00:00"
+    },
+    "test": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::test.test",
+      "inversedBy": "task_results"
+    }
+  }
+}
